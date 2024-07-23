@@ -1,12 +1,6 @@
 name: Check Helm Unused Variables
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
