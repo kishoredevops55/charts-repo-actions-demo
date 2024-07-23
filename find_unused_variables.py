@@ -1,9 +1,7 @@
 import os
 import yaml
-from yaml import Loader
-import re
 
-class LineNumberLoader(Loader):
+class LineNumberLoader(yaml.Loader):
     def __init__(self, stream):
         super().__init__(stream)
         self.line_numbers = {}
@@ -17,7 +15,8 @@ class LineNumberLoader(Loader):
 def load_yaml_file(filepath):
     with open(filepath, 'r') as file:
         loader = LineNumberLoader(file)
-        return yaml.load(file, Loader=loader), loader.line_numbers
+        data = yaml.load(file, Loader=LineNumberLoader)
+        return data, loader.line_numbers
 
 def find_unused_variables(values, used_variables, parent_key='', line_numbers=None):
     unused_vars = []
