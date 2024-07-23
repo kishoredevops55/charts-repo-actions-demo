@@ -9,7 +9,8 @@ class LineNumberLoader(yaml.Loader):
     def construct_mapping(self, node, mapping=None, **kwargs):
         if mapping is None:
             mapping = super().construct_mapping(node, **kwargs)
-        self.line_numbers[node.start_mark.line] = node
+        if node.start_mark:
+            self.line_numbers[node.start_mark.line] = node
         return mapping
 
 def load_yaml_file(filepath):
@@ -32,11 +33,8 @@ def find_unused_variables(values, used_variables, parent_key='', line_numbers=No
         if isinstance(value, dict):
             unused_vars.extend(find_unused_variables(value, used_variables, full_key, line_numbers))
         elif full_key not in used_variables:
-            if line_numbers:
-                line = line_numbers.get(full_key, 'unknown')
-                unused_vars.append((full_key, line))
-            else:
-                unused_vars.append(full_key)
+            line = line_numbers.get(full_key, 'unknown') if line_numbers else 'unknown'
+            unused_vars.append((full_key, line))
     return unused_vars
 
 def parse_templates_for_variables(template_dir):
@@ -63,6 +61,8 @@ def main():
 
             values, line_numbers = load_yaml_file(values_file)
             used_variables = parse_templates_for_variables(template_dir)
+
+            print(f"Used Variables in {values_file}: {used_variables}")  # Debug output
             unused_vars = find_unused_variables(values, used_variables, line_numbers=line_numbers)
 
             if unused_vars:
