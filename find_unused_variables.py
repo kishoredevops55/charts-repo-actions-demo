@@ -13,12 +13,19 @@ class LineNumberLoader(yaml.Loader):
         return mapping
 
 def load_yaml_file(filepath):
-    with open(filepath, 'r') as file:
-        loader = LineNumberLoader(file)
-        data = yaml.load(file, Loader=LineNumberLoader)
-        return data, loader.line_numbers
+    try:
+        with open(filepath, 'r') as file:
+            loader = LineNumberLoader(file)
+            data = yaml.load(file, Loader=LineNumberLoader)
+            return data, loader.line_numbers
+    except Exception as e:
+        print(f"Error loading YAML file {filepath}: {e}")
+        return None, {}
 
 def find_unused_variables(values, used_variables, parent_key='', line_numbers=None):
+    if values is None:
+        return []
+        
     unused_vars = []
     for key, value in values.items():
         full_key = f"{parent_key}.{key}" if parent_key else key
@@ -26,7 +33,7 @@ def find_unused_variables(values, used_variables, parent_key='', line_numbers=No
             unused_vars.extend(find_unused_variables(value, used_variables, full_key, line_numbers))
         elif full_key not in used_variables:
             if line_numbers:
-                line = line_numbers.get(value.start_mark.line, 'unknown')
+                line = line_numbers.get(full_key, 'unknown')
                 unused_vars.append((full_key, line))
             else:
                 unused_vars.append(full_key)
