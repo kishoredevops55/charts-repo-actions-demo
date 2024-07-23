@@ -1,18 +1,36 @@
 import os
 import yaml
+from yaml import Loader
+import re
+
+class LineNumberLoader(Loader):
+    def __init__(self, stream):
+        super().__init__(stream)
+        self.line_numbers = {}
+
+    def construct_mapping(self, node, mapping=None, **kwargs):
+        if mapping is None:
+            mapping = super().construct_mapping(node, **kwargs)
+        self.line_numbers[node.start_mark.line] = node
+        return mapping
 
 def load_yaml_file(filepath):
     with open(filepath, 'r') as file:
-        return yaml.safe_load(file)
+        loader = LineNumberLoader(file)
+        return yaml.load(file, Loader=loader), loader.line_numbers
 
-def find_unused_variables(values, used_variables, parent_key=''):
+def find_unused_variables(values, used_variables, parent_key='', line_numbers=None):
     unused_vars = []
     for key, value in values.items():
         full_key = f"{parent_key}.{key}" if parent_key else key
         if isinstance(value, dict):
-            unused_vars.extend(find_unused_variables(value, used_variables, full_key))
+            unused_vars.extend(find_unused_variables(value, used_variables, full_key, line_numbers))
         elif full_key not in used_variables:
-            unused_vars.append(full_key)
+            if line_numbers:
+                line = line_numbers.get(value.start_mark.line, 'unknown')
+                unused_vars.append((full_key, line))
+            else:
+                unused_vars.append(full_key)
     return unused_vars
 
 def parse_templates_for_variables(template_dir):
@@ -37,16 +55,17 @@ def main():
             values_file = os.path.join(root, 'values.yaml')
             template_dir = os.path.join(root, 'templates')
 
-            values = load_yaml_file(values_file)
+            values, line_numbers = load_yaml_file(values_file)
             used_variables = parse_templates_for_variables(template_dir)
-            unused_vars = find_unused_variables(values, used_variables)
+            unused_vars = find_unused_variables(values, used_variables, line_numbers=line_numbers)
 
             if unused_vars:
                 print(f"Unused variables in {values_file}:")
-                for var in unused_vars:
-                    print(f"  - {var}")
+                for var, line in unused_vars:
+                    print(f"  - {var} (line {line})")
             else:
                 print(f"No unused variables found in {values_file}")
 
 if __name__ == "__main__":
     main()
+    
